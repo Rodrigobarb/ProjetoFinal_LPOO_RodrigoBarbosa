@@ -178,11 +178,8 @@ class MainView:
                        highlightthickness=1, highlightbackground=BORDER)
         bar.pack(fill="x", side="bottom")
 
-        stats = [
-            ("Torneios ativos", "—"),
-            ("Equipes cadastradas", "—"),
-            ("Jogadores", "—"),
-        ]
+        stats = []
+        
         for i, (label, valor) in enumerate(stats):
             cell = tk.Frame(bar, bg=BG_SEC)
             cell.pack(side="left", padx=20, pady=10)

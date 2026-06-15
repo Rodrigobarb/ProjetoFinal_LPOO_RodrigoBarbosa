@@ -19,6 +19,11 @@ class ChaveamentoView:
         self.combo_torneio = ttk.Combobox(frame_top, width=40, state="readonly")
         self.combo_torneio.pack(side=tk.LEFT, padx=5)
         self.combo_torneio.bind("<<ComboboxSelected>>", self.carregar_partidas)
+        
+        self.torneios_dict = {}
+        self.partida_selecionada = None
+        
+        # Mova o carregar_torneios para depois de inicializar o torneios_dict
         self.carregar_torneios()
         
         tk.Button(frame_top, text="Gerar Chaveamento", command=self.gerar_chaveamento, width=18).pack(side=tk.LEFT, padx=5)
@@ -56,23 +61,25 @@ class ChaveamentoView:
         tk.Button(frame_vencedor, text="Salvar Vencedor", command=self.salvar_vencedor, width=15).pack(side=tk.LEFT, padx=5)
         
         self.tree.bind("<<TreeviewSelect>>", self.selecionar_partida)
-        
-        self.torneios_dict = {}
-        self.partida_selecionada = None
 
     def carregar_torneios(self):
         torneios = TorneiDAO.listar_todos()
-        self.torneios_dict = {f"{t.nome} ({t.get_tipo()})": t for t in torneios}
+        # O .strip() limpa espaços extras vindos do banco de dados (ex: se o tipo veio "ELIMINACAO ")
+        self.torneios_dict = {f"{t.nome.strip()} ({t.get_tipo().strip()})": t for t in torneios}
         self.combo_torneio['values'] = list(self.torneios_dict.keys())
 
     def gerar_chaveamento(self):
-        if not self.combo_torneio.get():
+        nome_selecionado = self.combo_torneio.get()
+        if not nome_selecionado:
             messagebox.showwarning("Aviso", "Selecione um torneio")
             return
+            
+        torneio = self.torneios_dict.get(nome_selecionado)
+        if not torneio:
+            messagebox.showerror("Erro", "Torneio selecionado inválido.")
+            return
         
-        torneio = self.torneios_dict[self.combo_torneio.get()]
-        
-        if torneio.get_tipo() != "ELIMINACAO":
+        if torneio.get_tipo().strip() != "ELIMINACAO":
             messagebox.showinfo("Info", "Chaveamento automático disponível apenas para torneios por ELIMINACAO")
             return
         
@@ -93,10 +100,14 @@ class ChaveamentoView:
         for item in self.tree.get_children():
             self.tree.delete(item)
         
-        if not self.combo_torneio.get():
+        nome_selecionado = self.combo_torneio.get()
+        if not nome_selecionado:
             return
         
-        torneio = self.torneios_dict[self.combo_torneio.get()]
+        torneio = self.torneios_dict.get(nome_selecionado)
+        if not torneio:
+            return
+            
         partidas = PartidaDAO.listar_por_torneio(torneio.id)
         
         for p in partidas:
@@ -116,17 +127,22 @@ class ChaveamentoView:
         if not self.tree.selection():
             return
         
+        nome_selecionado = self.combo_torneio.get()
+        torneio = self.torneios_dict.get(nome_selecionado)
+        if not torneio:
+            return
+            
         item = self.tree.selection()[0]
         valores = self.tree.item(item, "values")
         partida_id = int(valores[0])
         
-        partidas = PartidaDAO.listar_por_torneio(self.torneios_dict[self.combo_torneio.get()].id)
+        partidas = PartidaDAO.listar_por_torneio(torneio.id)
         self.partida_selecionada = next((p for p in partidas if p.id == partida_id), None)
         
         if self.partida_selecionada:
             eq1 = EquipeDAO.buscar_por_id(self.partida_selecionada.equipe1_id)
             eq2 = EquipeDAO.buscar_por_id(self.partida_selecionada.equipe2_id)
-            self.combo_vencedor['values'] = [eq1.nome, eq2.nome]
+            self.combo_vencedor['values'] = [eq1.nome if eq1 else "", eq2.nome if eq2 else ""]
 
     def salvar_vencedor(self):
         if not self.partida_selecionada:
@@ -141,8 +157,12 @@ class ChaveamentoView:
         eq2 = EquipeDAO.buscar_por_id(self.partida_selecionada.equipe2_id)
         
         vencedor_nome = self.combo_vencedor.get()
-        vencedor_id = eq1.id if eq1.nome == vencedor_nome else eq2.id
+        vencedor_id = eq1.id if eq1 and eq1.nome == vencedor_nome else (eq2.id if eq2 else None)
         
+        if vencedor_id is None:
+            messagebox.showerror("Erro", "Não foi possível mapear o vencedor.")
+            return
+            
         self.partida_selecionada.vencedor_id = vencedor_id
         PartidaDAO.atualizar(self.partida_selecionada)
         
