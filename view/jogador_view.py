@@ -72,9 +72,8 @@ class JogadorView:
         scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
         self.tree.configure(yscrollcommand=scrollbar.set)
         
-        self.listar()
         self.jogador_selecionado = None
-        self.equipes_dict = {}
+        self.listar()
 
     def carregar_equipes(self):
         equipes = EquipeDAO.listar_todos()
@@ -148,9 +147,13 @@ class JogadorView:
             self.tree.insert("", tk.END, values=(j.id, j.nome, j.cpf, j.nickname, equipe.nome if equipe else ""))
 
     def selecionar(self, event):
+        if not self.tree.selection():
+            return
         item = self.tree.selection()[0]
         valores = self.tree.item(item, "values")
         self.jogador_selecionado = JogadorDAO.buscar_por_id(int(valores[0]))
+        if not self.jogador_selecionado:
+            return
         self.entry_nome.delete(0, tk.END)
         self.entry_nome.insert(0, self.jogador_selecionado.nome)
         self.entry_cpf.delete(0, tk.END)

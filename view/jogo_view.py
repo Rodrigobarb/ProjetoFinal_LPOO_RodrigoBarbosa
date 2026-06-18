@@ -83,16 +83,19 @@ class JogoView:
     def inserir(self):
         if not self.validar_campos():
             return
-        jogo = Jogo(
-            nome=self.entry_nome.get(),
-            genero=self.entry_genero.get(),
-            plataforma=self.entry_plataforma.get(),
-            max_jogadores_equipe=int(self.entry_max_jogadores.get())
-        )
-        JogoDAO.inserir(jogo)
-        messagebox.showinfo("Sucesso", "Jogo inserido com sucesso!")
-        self.limpar()
-        self.listar()
+        try:
+            jogo = Jogo(
+                nome=self.entry_nome.get(),
+                genero=self.entry_genero.get(),
+                plataforma=self.entry_plataforma.get(),
+                max_jogadores_equipe=int(self.entry_max_jogadores.get())
+            )
+            JogoDAO.inserir(jogo)
+            messagebox.showinfo("Sucesso", "Jogo inserido com sucesso!")
+            self.limpar()
+            self.listar()
+        except Exception as e:
+            messagebox.showerror("Erro", f"Erro ao inserir jogo: {str(e)}")
 
     def atualizar(self):
         if not self.jogo_selecionado:
@@ -114,10 +117,13 @@ class JogoView:
             messagebox.showwarning("Aviso", "Selecione um jogo para excluir")
             return
         if messagebox.askyesno("Confirmar", "Deseja realmente excluir este jogo?"):
-            JogoDAO.excluir(self.jogo_selecionado.id)
-            messagebox.showinfo("Sucesso", "Jogo excluído com sucesso!")
-            self.limpar()
-            self.listar()
+            try:
+                JogoDAO.excluir(self.jogo_selecionado.id)
+                messagebox.showinfo("Sucesso", "Jogo excluído com sucesso!")
+                self.limpar()
+                self.listar()
+            except Exception as e:
+                messagebox.showerror("Erro", f"Erro ao excluir jogo: {str(e)}")
 
     def listar(self):
         for item in self.tree.get_children():
@@ -127,18 +133,25 @@ class JogoView:
             self.tree.insert("", tk.END, values=(jogo.id, jogo.nome, jogo.genero, jogo.plataforma, jogo.max_jogadores_equipe))
 
     def filtrar(self):
+        genero = self.filtro_genero.get().strip() if self.filtro_genero.get() else None
+        plataforma = self.filtro_plataforma.get().strip() if self.filtro_plataforma.get() else None
+        if not genero and not plataforma:
+            messagebox.showwarning("Aviso", "Preencha pelo menos um filtro (Gênero ou Plataforma)")
+            return
         for item in self.tree.get_children():
             self.tree.delete(item)
-        genero = self.filtro_genero.get() if self.filtro_genero.get() else None
-        plataforma = self.filtro_plataforma.get() if self.filtro_plataforma.get() else None
         jogos = JogoDAO.filtrar(genero, plataforma)
         for jogo in jogos:
             self.tree.insert("", tk.END, values=(jogo.id, jogo.nome, jogo.genero, jogo.plataforma, jogo.max_jogadores_equipe))
 
     def selecionar(self, event):
+        if not self.tree.selection():
+            return
         item = self.tree.selection()[0]
         valores = self.tree.item(item, "values")
         self.jogo_selecionado = JogoDAO.buscar_por_id(int(valores[0]))
+        if not self.jogo_selecionado:
+            return
         self.entry_nome.delete(0, tk.END)
         self.entry_nome.insert(0, self.jogo_selecionado.nome)
         self.entry_genero.delete(0, tk.END)

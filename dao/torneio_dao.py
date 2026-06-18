@@ -63,8 +63,20 @@ class TorneiDAO:
     def filtrar_por_status(status):
         conexao = DatabaseConfig.get_connection()
         cursor = conexao.cursor()
-        sql = "SELECT * FROM tb_torneios WHERE tor_status=%s ORDER BY tor_data_inicio DESC"
+        sql = "SELECT * FROM tb_torneios WHERE UPPER(tor_status)=UPPER(%s) ORDER BY tor_data_inicio DESC"
         cursor.execute(sql, (status.value,))
+        registros = cursor.fetchall()
+        cursor.close()
+        conexao.close()
+        return [TorneiFactory.criar_torneio(r[4], r[1], r[2], r[5], StatusTorneio[r[3]], r[0]) for r in registros]
+
+    @staticmethod
+    def filtrar_por_tipo(tipo):
+        """Filtra torneios por tipo (ELIMINACAO ou PONTOS)"""
+        conexao = DatabaseConfig.get_connection()
+        cursor = conexao.cursor()
+        sql = "SELECT * FROM tb_torneios WHERE UPPER(tor_tipo)=UPPER(%s) ORDER BY tor_data_inicio DESC"
+        cursor.execute(sql, (tipo,))
         registros = cursor.fetchall()
         cursor.close()
         conexao.close()

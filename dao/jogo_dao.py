@@ -65,11 +65,11 @@ class JogoDAO:
         sql = "SELECT * FROM tb_jogos WHERE 1=1"
         params = []
         if genero:
-            sql += " AND jog_genero=%s"
-            params.append(genero)
+            sql += " AND jog_genero ILIKE %s"
+            params.append(f"%{genero}%")
         if plataforma:
-            sql += " AND jog_plataforma=%s"
-            params.append(plataforma)
+            sql += " AND jog_plataforma ILIKE %s"
+            params.append(f"%{plataforma}%")
         sql += " ORDER BY jog_nome"
         cursor.execute(sql, params)
         registros = cursor.fetchall()
